@@ -1,0 +1,158 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.header {
+  background: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+  padding: 12px 0 0 0;
+  min-height: 60px;
+  display: flex;
+  justify-content:flex-end;
+  align-items: flex-end;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: row;
+}
+
+.grid-container {
+  flex: 1;
+  background: white;
+  overflow: auto;
+  min-width: 0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding-left:400px;
+}
+
+.frame-wrapper {
+  position: relative;
+  border: 3px solid #bebebe;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  overflow: hidden;
+}
+
+.layout {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* react-grid-layout의 아이템 컨테이너에 간격 적용 */
+.react-grid-item {
+  padding: calc(var(--vertical-spacing, 0px) / 2) calc(var(--horizontal-spacing, 0px) / 2) !important;
+  box-sizing: border-box;
+}
+
+.widget {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+  cursor: grabbing;
+  box-sizing: border-box;
+}
+
+.widget:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.drag-handle {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  font-weight: 600;
+  user-select: none;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.widget-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+  z-index: 10;
+  position: relative;
+}
+
+.widget-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.widget-close:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.widget-content {
+  padding: 16px;
+  flex: 1;
+  overflow: auto;
+}
+
+.widget-content h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.widget-content p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+
+.footer {
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+}
+
+.footer .copyright {
+  font-size: 12px;
+  color: #666;
+}
+
+.no-frame-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  font-size: 18px;
+}
