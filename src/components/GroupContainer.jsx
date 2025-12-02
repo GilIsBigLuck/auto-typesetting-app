@@ -52,31 +52,21 @@ function GroupContainer({ id, children, groupData, isSelected, onSelect, onDelet
     }
   };
 
-  const displayName = groupData?.name || `Group ${id.split('-')[1]}`;
+  const displayName = groupData?.name || `판형 ${id.split('-')[1]}`;
   const displaySize = groupData?.size || '';
-  
-  // 비율을 유지하면서 적절한 크기로 스케일링 (0.3배)
-  const scale = 0.3;
-  const scaledWidth = groupData?.widthPx ? groupData.widthPx * scale : undefined;
-  const scaledHeight = groupData?.heightPx ? groupData.heightPx * scale : undefined;
-  
-  const containerStyle = {
-    width: scaledWidth ? `${scaledWidth}px` : undefined,
-    minHeight: scaledHeight ? `${scaledHeight}px` : undefined,
-  };
 
   return (
     <div 
       className={`group-container ${isOver ? 'drag-over' : ''} ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`} 
       ref={setNodeRef}
-      style={{ ...containerStyle, ...style }}
+      style={style}
       onClick={handleSelect}
     >
       <div className="group-inner">
         <div className="group-header">
           <button 
             className="group-drag-handle" 
-            title="그룹 드래그"
+            title="판형 드래그"
             {...attributes}
             {...listeners}
           >
@@ -87,7 +77,7 @@ function GroupContainer({ id, children, groupData, isSelected, onSelect, onDelet
             {displaySize && <span className="group-size"> ({displaySize})</span>}
           </h3>
           {onDelete && (
-            <button className="group-delete" onClick={handleDelete} title="그룹 삭제">
+            <button className="group-delete" onClick={handleDelete} title="판형 삭제">
               ×
             </button>
           )}

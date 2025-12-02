@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -15,20 +15,37 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { FRAME_SIZES, PRINT_SIZES } from '../data/printSizes';
+import { mmToPxRounded } from '../utils/unitConverter';
 import '../styles/MainContainer.css';
 import GroupContainer from './GroupContainer';
 import CardContainer from './CardContainer';
 
+// createSnapModifier 함수 (예제 코드 방식)
+function createSnapModifier(gridSize) {
+  return ({ transform }) => {
+    return {
+      ...transform,
+      x: Math.round(transform.x / gridSize) * gridSize,
+      y: Math.round(transform.y / gridSize) * gridSize,
+    };
+  };
+}
+
 function MainContainer({ onAddGroup, onAddCard }) {
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState({});
-  const [groupData, setGroupData] = useState({}); // 그룹의 타입 정보 저장
-  const [cardData, setCardData] = useState({}); // 카드의 타입 정보 저장
+  const [groupData, setGroupData] = useState({}); // 판형의 타입 정보 저장
+  const [cardData, setCardData] = useState({}); // 컨텐츠의 타입 정보 저장
 
   const [activeId, setActiveId] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [nextGroupId, setNextGroupId] = useState(1);
   const [nextCardId, setNextCardId] = useState(1);
+  const gridSizeMm = 100; // 그리드 크기 (mm)
+  const gridSize = mmToPxRounded(gridSizeMm); // 그리드 크기 (픽셀)
+  
+  // Snap to Grid modifier 생성 (예제 코드 방식)
+  const snapToGrid = useMemo(() => createSnapModifier(gridSize), [gridSize]);
   
   // 함수 참조를 위한 ref
   const handleAddGroupRef = useRef(null);
@@ -93,7 +110,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
       return;
     }
     
-    // 그룹 드래그인지 확인
+    // 판형 드래그인지 확인
     const activeData = event.active.data.current;
     if (activeData?.type === 'group') {
       handleGroupDragEnd(event);
@@ -154,14 +171,14 @@ function MainContainer({ onAddGroup, onAddCard }) {
     return Object.keys(itemsState).find((key) => itemsState[key].includes(id));
   }
 
-  const handleAddGroup = useCallback((type = 'medium') => {
+  const handleAddGroup = useCallback((type = 'korean8') => {
     // 중복 실행 방지
     if (isAddingGroupRef.current) {
       return;
     }
     isAddingGroupRef.current = true;
     
-    const frameSize = FRAME_SIZES[type] || FRAME_SIZES.medium;
+    const frameSize = FRAME_SIZES[type] || FRAME_SIZES.korean8;
     const currentId = nextGroupIdRef.current;
     const newGroupId = `group-${currentId}`;
     
@@ -172,7 +189,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
         return prev;
       }
       isAddingGroupRef.current = false;
-      // 새로 생성된 그룹을 선택
+      // 새로 생성된 판형을 선택
       setSelectedGroupId(newGroupId);
       return [...prev, newGroupId];
     });
@@ -193,18 +210,18 @@ function MainContainer({ onAddGroup, onAddCard }) {
     });
   }, []);
 
-  const handleAddCard = useCallback((type = 'medium') => {
+  const handleAddCard = useCallback((type = 'businessCard1') => {
     // 중복 실행 방지
     if (isAddingCardRef.current) {
       return;
     }
     isAddingCardRef.current = true;
     
-    const printSize = PRINT_SIZES[type] || PRINT_SIZES.medium;
+    const printSize = PRINT_SIZES[type] || PRINT_SIZES.businessCard1;
     
     setGroups((currentGroups) => {
       if (currentGroups.length === 0) {
-        // 그룹이 없으면 먼저 그룹 생성
+        // 판형이 없으면 먼저 판형 생성
         const currentGroupId = nextGroupIdRef.current;
         const currentCardId = nextCardIdRef.current;
         const newGroupId = `group-${currentGroupId}`;
@@ -217,8 +234,8 @@ function MainContainer({ onAddGroup, onAddCard }) {
         setGroupData((prev) => ({
           ...prev,
           [newGroupId]: {
-            type: 'medium',
-            ...FRAME_SIZES.medium,
+            type: 'korean8',
+            ...FRAME_SIZES.korean8,
           },
         }));
         setCardData((prev) => ({
@@ -237,12 +254,12 @@ function MainContainer({ onAddGroup, onAddCard }) {
           isAddingCardRef.current = false;
           return prev + 1;
         });
-        // 새로 생성된 그룹을 선택
+        // 새로 생성된 판형을 선택
         setSelectedGroupId(newGroupId);
         
         return [newGroupId];
       } else {
-        // 선택된 그룹 또는 첫 번째 그룹에 카드 추가
+        // 선택된 판형 또는 첫 번째 판형에 컨텐츠 추가
         const currentSelectedGroupId = selectedGroupIdRef.current;
         const targetGroup = currentSelectedGroupId && currentGroups.includes(currentSelectedGroupId) 
           ? currentSelectedGroupId 
@@ -287,7 +304,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
     setGroups((prev) => prev.filter((id) => id !== groupId));
     setItems((prev) => {
       const newItems = { ...prev };
-      // 그룹 내의 모든 카드 데이터도 삭제
+      // 판형 내의 모든 컨텐츠 데이터도 삭제
       const cardIds = newItems[groupId] || [];
       setCardData((prevCardData) => {
         const newCardData = { ...prevCardData };
@@ -304,7 +321,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
       delete newGroupData[groupId];
       return newGroupData;
     });
-    // 삭제된 그룹이 선택된 그룹이면 선택 해제
+    // 삭제된 판형이 선택된 판형이면 선택 해제
     if (selectedGroupId === groupId) {
       setSelectedGroupId(null);
     }
@@ -357,10 +374,16 @@ function MainContainer({ onAddGroup, onAddCard }) {
 
   return (
     <main className="main-container">
-      <div className="main-content">
+      <div 
+        className="main-content"
+        style={{
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+        }}
+      >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          modifiers={[snapToGrid]}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -369,7 +392,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
             <div className="groups-wrapper">
               {groups.length === 0 ? (
                 <div className="empty-state">
-                  <p>그룹을 생성해주세요</p>
+                  <p>판형을 생성해주세요</p>
                 </div>
               ) : (
                 groups.map((groupId) => (
@@ -383,7 +406,13 @@ function MainContainer({ onAddGroup, onAddCard }) {
                     onDelete={handleDeleteGroup}
                   >
                     <SortableContext items={items[groupId] || []} strategy={rectSortingStrategy}>
-                      <div className="cards-grid">
+                      <div 
+                        className="cards-grid"
+                        style={{
+                          width: groupData[groupId]?.widthPx ? `${groupData[groupId].widthPx}px` : '100%',
+                          height: groupData[groupId]?.heightPx ? `${groupData[groupId].heightPx}px` : 'auto',
+                        }}
+                      >
                         {(items[groupId] || []).map((cardId) => (
                           <CardContainer
                             key={cardId}

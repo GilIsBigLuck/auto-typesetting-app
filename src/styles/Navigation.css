@@ -1,13 +1,12 @@
 .sidebar {
   width: 250px;
-  height:calc(100vh - 100px);
+  height:calc(100vh - 60px);
   display: flex;
   flex-direction: column;
   padding: 20px;
   position:fixed;
-  top:480px;
+  top:60px;
   left:0;
-  transform:translateY(-50%);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
   border:solid 1px #e0e0e0;
   background: white;
@@ -41,36 +40,98 @@
   transition: all 0.2s;
   color: white;
   border: solid 1px transparent;
+  /* 기본 색상 (클래스가 없을 때) */
+  background: #667eea;
+  border-color: #667eea;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.frame-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  opacity: 0.9;
 }
 
 .frame-button-small {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  background: #11998e;
   border-color: #11998e;
 }
 
 .frame-button-small:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(17, 153, 142, 0.3);
+  opacity: 0.9;
 }
 
 .frame-button-medium {
-  background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+  background: #ee0979;
   border-color: #ee0979;
 }
 
 .frame-button-medium:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(238, 9, 121, 0.3);
+  opacity: 0.9;
 }
 
 .frame-button-large {
-  background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+  background: #8e2de2;
   border-color: #8e2de2;
 }
 
 .frame-button-large:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(142, 45, 226, 0.3);
+  opacity: 0.9;
+}
+
+/* 새로운 판형 버튼 스타일 - 각각 다른 색상 */
+.frame-button-size2 {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.frame-button-size2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  opacity: 0.9;
+}
+
+.frame-button-korean2 {
+  background: #f5576c;
+  border-color: #f5576c;
+}
+
+.frame-button-korean2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(245, 87, 108, 0.3);
+  opacity: 0.9;
+}
+
+.frame-button-korean4 {
+  background: #4facfe;
+  border-color: #4facfe;
+}
+
+.frame-button-korean4:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(79, 172, 254, 0.3);
+  opacity: 0.9;
+}
+
+.frame-button-korean8 {
+  background: #43e97b;
+  border-color: #43e97b;
+}
+
+.frame-button-korean8:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(67, 233, 123, 0.3);
+  opacity: 0.9;
 }
 
 .box-buttons {
@@ -96,36 +157,120 @@
   transition: all 0.2s;
   color: white;
   border: solid 1px transparent;
+  /* 기본 색상 (클래스가 없을 때) */
+  background: #667eea;
+  border-color: #667eea;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.box-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  opacity: 0.9;
 }
 
 .box-button-large {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color:#667eea;
+  background: #667eea;
+  border-color: #667eea;
 }
 
 .box-button-large:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+  opacity: 0.9;
 }
 
 .box-button-medium {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  border-color:#f093fb;
+  background: #f5576c;
+  border-color: #f5576c;
 }
 
 .box-button-medium:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(240, 147, 251, 0.4);
+  box-shadow: 0 4px 8px rgba(245, 87, 108, 0.3);
+  opacity: 0.9;
 }
 
 .box-button-small {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  border-color:#4facfe;
+  background: #4facfe;
+  border-color: #4facfe;
 }
 
 .box-button-small:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(74, 81, 87, 0.4);
+  box-shadow: 0 4px 8px rgba(79, 172, 254, 0.3);
+  opacity: 0.9;
+}
+
+/* 새로운 컨텐츠 버튼 스타일 - 각각 다른 색상 */
+.box-button-businessCard1 {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.box-button-businessCard1:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  opacity: 0.9;
+}
+
+.box-button-businessCard2 {
+  background: #e91e63;
+  border-color: #e91e63;
+}
+
+.box-button-businessCard2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(233, 30, 99, 0.3);
+  opacity: 0.9;
+}
+
+.box-button-giftCard {
+  background: #00bcd4;
+  border-color: #00bcd4;
+}
+
+.box-button-giftCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+  opacity: 0.9;
+}
+
+.box-button-leaflet1 {
+  background: #4caf50;
+  border-color: #4caf50;
+}
+
+.box-button-leaflet1:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  opacity: 0.9;
+}
+
+.box-button-leaflet2 {
+  background: #ff9800;
+  border-color: #ff9800;
+}
+
+.box-button-leaflet2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+  opacity: 0.9;
+}
+
+.box-button-sticker {
+  background: #009688;
+  border-color: #009688;
+}
+
+.box-button-sticker:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 150, 136, 0.3);
+  opacity: 0.9;
 }
 
 .box-button:disabled {
@@ -137,5 +282,14 @@
 .box-button:disabled:hover {
   transform: none;
   box-shadow: none;
+}
+
+.button-title {
+  font-weight: 600;
+}
+
+.button-size {
+  font-size: 12px;
+  opacity: 0.9;
 }
 

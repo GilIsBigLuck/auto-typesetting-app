@@ -25,20 +25,18 @@ function CardContainer({ id, cardImage, children, cardData, isDragging, onDelete
     }
   };
 
-  const displayName = cardData?.name || (id ? `Card ${id.split('-')[1]}` : 'Card');
-  const displaySize = cardData?.size || '';
+  // 표시값: 이름에 표시될 크기 (displaySize)
+  // 실제 크기: 실제로 적용될 크기 (widthPx, heightPx)
+  const displayName = cardData?.name || (id ? `컨텐츠 ${id.split('-')[1]}` : '컨텐츠');
+  const displaySize = cardData?.displaySize || cardData?.size || '';
   
-  // 비율을 유지하면서 적절한 크기로 스케일링 (0.3배)
-  const scale = 0.3;
-  const scaledWidth = cardData?.widthPx ? cardData.widthPx * scale : undefined;
-  const scaledHeight = cardData?.heightPx ? cardData.heightPx * scale : undefined;
-  
+  // 1px = 1mm이므로 실제 크기 그대로 사용
   const cardStyle = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition,
     opacity: isSortableDragging || isDragging ? 0.5 : 1,
-    width: scaledWidth ? `${scaledWidth}px` : undefined,
-    height: scaledHeight ? `${scaledHeight}px` : undefined,
+    width: cardData?.widthPx ? `${cardData.widthPx}px` : undefined,
+    height: cardData?.heightPx ? `${cardData.heightPx}px` : undefined,
     maxWidth: '100%',
     justifySelf: 'start',
   };
@@ -55,16 +53,16 @@ function CardContainer({ id, cardImage, children, cardData, isDragging, onDelete
             ⋮⋮
           </button>
           {onDelete && (
-            <button className="card-delete" onClick={handleDelete} title="카드 삭제">
+            <button className="card-delete" onClick={handleDelete} title="컨텐츠 삭제">
               ×
             </button>
           )}
         </div>
         <div className="card-content">
           {cardImage && <img src={cardImage} alt="Card Image" className="card-image" />}
-          <div className="card-name">{displayName}</div>
+          {/* <div className="card-name">{displayName}</div>
           {displaySize && <div className="card-size">{displaySize}</div>}
-          {children}
+          {children} */}
         </div>
       </div>
     </div>
