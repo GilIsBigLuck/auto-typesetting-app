@@ -7,6 +7,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -14,6 +15,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
+import { useDraggable } from '@dnd-kit/core';
 import { FRAME_SIZES, PRINT_SIZES } from '../data/printSizes';
 import { mmToPxRounded } from '../utils/unitConverter';
 import '../styles/MainContainer.css';
@@ -31,6 +33,18 @@ function createSnapModifier(gridSize) {
   };
 }
 
+// CardsGrid DropZone 컴포넌트
+function CardsGridDropZone({ groupId, children }) {
+  const { setNodeRef } = useDroppable({
+    id: groupId,
+    data: {
+      type: 'cards-grid',
+    },
+  });
+
+  return <div ref={setNodeRef}>{children}</div>;
+}
+
 function MainContainer({ onAddGroup, onAddCard }) {
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState({});
@@ -41,10 +55,10 @@ function MainContainer({ onAddGroup, onAddCard }) {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [nextGroupId, setNextGroupId] = useState(1);
   const [nextCardId, setNextCardId] = useState(1);
-  const gridSizeMm = 100; // 그리드 크기 (mm)
+  const gridSizeMm = 10; // 그리드 크기 (mm) - 10mm 단위로 이동
   const gridSize = mmToPxRounded(gridSizeMm); // 그리드 크기 (픽셀)
   
-  // Snap to Grid modifier 생성 (예제 코드 방식)
+  // Snap to Grid modifier 생성
   const snapToGrid = useMemo(() => createSnapModifier(gridSize), [gridSize]);
   
   // 함수 참조를 위한 ref
@@ -74,7 +88,12 @@ function MainContainer({ onAddGroup, onAddCard }) {
   }, [selectedGroupId]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 500,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -105,61 +124,50 @@ function MainContainer({ onAddGroup, onAddCard }) {
 
   function handleDragEnd(event) {
     const { active, over } = event;
-    if (!over) {
-      setActiveId(null);
-      return;
-    }
     
     // 판형 드래그인지 확인
     const activeData = event.active.data.current;
     if (activeData?.type === 'group') {
-      handleGroupDragEnd(event);
+      if (over) {
+        handleGroupDragEnd(event);
+      }
       setActiveId(null);
       return;
     }
 
-    setItems((prev) => {
-      const activeContainer = findContainer(active.id, prev);
-      const overContainer = findContainer(over.id, prev);
+    // 컨텐츠 드래그인 경우 - useSortable이 자동으로 처리
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
 
-      if (!activeContainer || !overContainer) {
-        setActiveId(null);
-        return prev;
-      }
+    const activeContainer = findContainer(active.id, items);
+    const overContainer = over.id.startsWith('group-') ? over.id : findContainer(over.id, items);
+    
+    if (!activeContainer || !overContainer) {
+      setActiveId(null);
+      return;
+    }
 
-      const activeIndex = prev[activeContainer].indexOf(active.id);
-      const overIndex = prev[overContainer].indexOf(over.id);
-
-      if (activeContainer === overContainer) {
-        if (activeIndex !== overIndex) {
-          return {
-            ...prev,
-            [overContainer]: arrayMove(prev[overContainer], activeIndex, overIndex),
-          };
-        }
-        return prev;
-      }
-
-      // 다른 컨테이너로 이동
-      // 이미 activeContainer에서 제거되었는지 확인
-      const filteredActive = prev[activeContainer].filter((item) => item !== active.id);
-      const targetOver = prev[overContainer] || [];
+    // 같은 그룹 내에서 순서 변경 - useSortable이 자동으로 처리
+    if (activeContainer === overContainer) {
+      const activeIndex = items[activeContainer].indexOf(active.id);
+      const overIndex = items[overContainer].indexOf(over.id);
       
-      // 중복 방지: 이미 overContainer에 있는지 확인
-      if (targetOver.includes(active.id)) {
-        return prev;
+      if (activeIndex !== overIndex) {
+        setItems((prev) => ({
+          ...prev,
+          [activeContainer]: arrayMove(prev[activeContainer], activeIndex, overIndex),
+        }));
       }
-      
-      return {
+    } else {
+      // 다른 그룹으로 이동
+      setItems((prev) => ({
         ...prev,
-        [activeContainer]: filteredActive,
-        [overContainer]: [
-          ...targetOver.slice(0, overIndex >= 0 ? overIndex : targetOver.length),
-          active.id,
-          ...targetOver.slice(overIndex >= 0 ? overIndex : targetOver.length),
-        ],
-      };
-    });
+        [activeContainer]: prev[activeContainer].filter((item) => item !== active.id),
+        [overContainer]: [...(prev[overContainer] || []), active.id],
+      }));
+    }
 
     setActiveId(null);
   }
@@ -245,6 +253,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
             ...printSize,
           },
         }));
+        // 새 카드 추가 완료
         setNextGroupId((prev) => {
           nextGroupIdRef.current = prev + 1;
           return prev + 1;
@@ -286,6 +295,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
             ...printSize,
           },
         }));
+        // 새 카드 추가 완료
         setNextCardId((prev) => {
           nextCardIdRef.current = prev + 1;
           return prev + 1;
@@ -327,6 +337,29 @@ function MainContainer({ onAddGroup, onAddCard }) {
     }
   }, [selectedGroupId]);
 
+  const handleDropImage = useCallback((cardId, file) => {
+    if (!file) return;
+    
+    // FileReader를 사용하여 이미지를 base64로 변환
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target.result;
+      
+      // 기존 카드 데이터에 이미지 추가 (높이는 유지)
+      setCardData((prev) => ({
+        ...prev,
+        [cardId]: {
+          ...prev[cardId],
+          imageUrl,
+        },
+      }));
+    };
+    reader.onerror = () => {
+      console.error('이미지 파일을 읽는 중 오류가 발생했습니다.');
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
   const handleDeleteCard = useCallback((cardId) => {
     setItems((prev) => {
       const newItems = { ...prev };
@@ -341,6 +374,148 @@ function MainContainer({ onAddGroup, onAddCard }) {
       return newCardData;
     });
   }, []);
+
+  const handleUpdateGroupData = useCallback((groupId, updates) => {
+    setGroupData((prev) => ({
+      ...prev,
+      [groupId]: {
+        ...prev[groupId],
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const handleExport = useCallback(async (groupId) => {
+    // Electron의 기본 인쇄 기능 사용
+    const gridElement = document.getElementById(`cards-grid-${groupId}`);
+    if (!gridElement) {
+      alert('출력할 판형을 찾을 수 없습니다.');
+      return;
+    }
+
+    // 판형 크기 가져오기 (mm 단위, 1px = 1mm)
+    const widthMm = groupData[groupId]?.widthPx || 210; // 기본 A4 너비
+    const heightMm = groupData[groupId]?.heightPx || 297; // 기본 A4 높이
+
+    // Electron 환경 확인
+    if (window.electron && window.electron.printToPDF) {
+      try {
+        // 임시 인쇄용 윈도우 생성
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          alert('팝업이 차단되어 인쇄할 수 없습니다.');
+          return;
+        }
+
+        // 인쇄용 HTML 생성 (스타일 포함)
+        const styles = Array.from(document.styleSheets)
+          .map(sheet => {
+            try {
+              return Array.from(sheet.cssRules)
+                .map(rule => rule.cssText)
+                .join('\n');
+            } catch (e) {
+              return '';
+            }
+          })
+          .join('\n');
+
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                ${styles}
+                @page {
+                  size: ${widthMm}mm ${heightMm}mm;
+                  margin: 0;
+                }
+                body {
+                  margin: 0;
+                  padding: 0;
+                  width: ${widthMm}mm;
+                  height: ${heightMm}mm;
+                  overflow: hidden;
+                  background: white;
+                }
+                .cards-grid {
+                  width: 100% !important;
+                  height: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+              </style>
+            </head>
+            <body>
+              ${gridElement.outerHTML}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+
+        // PDF로 저장
+        await new Promise(resolve => setTimeout(resolve, 500)); // 렌더링 대기
+        
+        const pdfData = await window.electron.printToPDF({
+          pageSize: {
+            width: widthMm / 25.4, // mm를 인치로 변환
+            height: heightMm / 25.4,
+          },
+          printBackground: true,
+          margins: {
+            marginType: 'none',
+          },
+        });
+
+        // Blob으로 변환하여 다운로드
+        const blob = new Blob([pdfData], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `판형-${groupId}-${new Date().getTime()}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        printWindow.close();
+      } catch (error) {
+        console.error('PDF 생성 오류:', error);
+        alert('PDF 생성 중 오류가 발생했습니다.');
+      }
+    } else {
+      // 브라우저 환경에서는 기본 인쇄 사용
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('팝업이 차단되어 인쇄할 수 없습니다.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              @page {
+                size: ${widthMm}mm ${heightMm}mm;
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                width: ${widthMm}mm;
+                height: ${heightMm}mm;
+              }
+            </style>
+          </head>
+          <body>${gridElement.innerHTML}</body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  }, [groupData]);
 
   // ref에 함수 저장
   useEffect(() => {
@@ -404,25 +579,36 @@ function MainContainer({ onAddGroup, onAddCard }) {
                     isSelected={selectedGroupId === groupId}
                     onSelect={handleSelectGroup}
                     onDelete={handleDeleteGroup}
+                    onUpdateGroupData={handleUpdateGroupData}
+                    onExport={handleExport}
                   >
-                    <SortableContext items={items[groupId] || []} strategy={rectSortingStrategy}>
-                      <div 
-                        className="cards-grid"
-                        style={{
-                          width: groupData[groupId]?.widthPx ? `${groupData[groupId].widthPx}px` : '100%',
-                          height: groupData[groupId]?.heightPx ? `${groupData[groupId].heightPx}px` : 'auto',
-                        }}
+                    <CardsGridDropZone groupId={groupId}>
+                      <SortableContext 
+                        items={items[groupId] || []} 
+                        strategy={rectSortingStrategy}
                       >
-                        {(items[groupId] || []).map((cardId) => (
-                          <CardContainer
-                            key={cardId}
-                            id={cardId}
-                            cardData={cardData[cardId]}
-                            onDelete={handleDeleteCard}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
+                        <div 
+                          className="cards-grid"
+                          id={`cards-grid-${groupId}`}
+                          style={{
+                            width: groupData[groupId]?.widthPx ? `${groupData[groupId].widthPx}px` : '100%',
+                            height: groupData[groupId]?.heightPx ? `${groupData[groupId].heightPx}px` : 'auto',
+                            gap: `${groupData[groupId]?.gap ?? 4}px`,
+                          }}
+                        >
+                          {(items[groupId] || []).map((cardId) => (
+                            <CardContainer
+                              key={cardId}
+                              id={cardId}
+                              cardData={cardData[cardId]}
+                              padding={groupData[groupId]?.padding ?? 4}
+                              onDelete={handleDeleteCard}
+                              onDropImage={handleDropImage}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </CardsGridDropZone>
                   </GroupContainer>
                 ))
               )}
@@ -438,7 +624,11 @@ function MainContainer({ onAddGroup, onAddCard }) {
                   items={items[activeId] || []}
                 />
               ) : (
-                <CardContainer key={activeId} id={activeId} cardData={cardData[activeId]} isDragging />
+                <CardContainer 
+                  key={activeId} 
+                  id={activeId} 
+                  cardData={cardData[activeId]} 
+                />
               )
             ) : null}
           </DragOverlay>

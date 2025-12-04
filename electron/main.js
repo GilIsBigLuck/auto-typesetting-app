@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -56,6 +56,34 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+// IPC 핸들러 등록
+ipcMain.handle('print-to-pdf', async (event, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return null;
+  
+  try {
+    const data = await win.webContents.printToPDF({
+      margins: {
+        marginType: 'none',
+      },
+      printBackground: true,
+      pageSize: options?.pageSize || 'A4',
+      ...options,
+    });
+    return data;
+  } catch (error) {
+    console.error('PDF 생성 오류:', error);
+    throw error;
+  }
+});
+
+ipcMain.on('print', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.webContents.print();
   }
 });
 

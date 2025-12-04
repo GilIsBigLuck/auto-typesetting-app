@@ -1,22 +1,36 @@
 import { useSortable } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { useRef } from 'react';
 import '../styles/CardContainer.css';
 
-function CardContainer({ id, cardImage, children, cardData, isDragging, onDelete }) {
-  // id가 없으면 임시 id 사용 (DragOverlay용)
-  const sortableId = id || 'drag-overlay-card';
-  
+function CardContainer({ id, cardData, onDelete, onDropImage }) {
   const {
     attributes,
     listeners,
-    setNodeRef,
+    setNodeRef: setSortableRef,
     transform,
     transition,
-    isDragging: isSortableDragging,
+    isDragging,
   } = useSortable({ 
-    id: sortableId,
-    disabled: !id, // id가 없으면 비활성화
+    id: id,
+    data: {
+      type: 'card',
+    },
   });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `card-drop-${id}`,
+    data: {
+      type: 'card-drop',
+    },
+  });
+
+  // 두 ref를 결합
+  const setNodeRef = (node) => {
+    setSortableRef(node);
+    setDroppableRef(node);
+  };
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -25,33 +39,94 @@ function CardContainer({ id, cardImage, children, cardData, isDragging, onDelete
     }
   };
 
-  // 표시값: 이름에 표시될 크기 (displaySize)
-  // 실제 크기: 실제로 적용될 크기 (widthPx, heightPx)
-  const displayName = cardData?.name || (id ? `컨텐츠 ${id.split('-')[1]}` : '컨텐츠');
-  const displaySize = cardData?.displaySize || cardData?.size || '';
-  
-  // 1px = 1mm이므로 실제 크기 그대로 사용
+  // 마지막으로 처리한 파일을 추적하여 중복 처리 방지
+  const lastProcessedFileRef = useRef(null);
+  const dragEnterTimeoutRef = useRef(null);
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 기존 타임아웃 클리어
+    if (dragEnterTimeoutRef.current) {
+      clearTimeout(dragEnterTimeoutRef.current);
+    }
+    
+    // 드래그 중인 항목이 파일인지 확인
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      const item = e.dataTransfer.items[0];
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        // 파일을 읽어서 처리 (약간의 지연을 두어 안정성 확보)
+        dragEnterTimeoutRef.current = setTimeout(() => {
+          const file = item.getAsFile();
+          if (file && onDropImage) {
+            // 같은 파일이면 처리하지 않음
+            const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+            if (lastProcessedFileRef.current !== fileKey) {
+              lastProcessedFileRef.current = fileKey;
+              onDropImage(id, file);
+            }
+          }
+        }, 50);
+      }
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    // 타임아웃 클리어
+    if (dragEnterTimeoutRef.current) {
+      clearTimeout(dragEnterTimeoutRef.current);
+      dragEnterTimeoutRef.current = null;
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 드래그 오버에서는 파일 처리를 하지 않고, preventDefault만 수행
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0 && onDropImage) {
+      // 첫 번째 이미지만 사용
+      onDropImage(id, imageFiles[0]);
+    }
+  };
+
+  // 공식 문서 방식: position: relative + transform만 사용
+  // flex-wrap으로 자동 줄바꿈 지원
   const cardStyle = {
-    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isSortableDragging || isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : 1,
     width: cardData?.widthPx ? `${cardData.widthPx}px` : undefined,
     height: cardData?.heightPx ? `${cardData.heightPx}px` : undefined,
-    maxWidth: '100%',
-    justifySelf: 'start',
+    flexShrink: 0, // 크기 고정
+    zIndex: isDragging ? 1000 : 1,
+    boxSizing: 'border-box',
+    overflow: 'hidden',
   };
 
   return (
     <div
       ref={setNodeRef}
       style={cardStyle}
-      className={`card-container ${isSortableDragging || isDragging ? 'dragging' : ''}`}
+      className={`card-container ${isDragging ? 'dragging' : ''} ${isOver ? 'drop-over' : ''}`}
+      {...attributes}
+      {...listeners}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div className="card-inner">
         <div className="card-header">
-          <button className="card-drag-handle" {...attributes} {...listeners}>
-            ⋮⋮
-          </button>
           {onDelete && (
             <button className="card-delete" onClick={handleDelete} title="컨텐츠 삭제">
               ×
@@ -59,10 +134,9 @@ function CardContainer({ id, cardImage, children, cardData, isDragging, onDelete
           )}
         </div>
         <div className="card-content">
-          {cardImage && <img src={cardImage} alt="Card Image" className="card-image" />}
-          {/* <div className="card-name">{displayName}</div>
-          {displaySize && <div className="card-size">{displaySize}</div>}
-          {children} */}
+          {cardData?.imageUrl && (
+            <img src={cardData.imageUrl} alt="Card Image" className="card-image" />
+          )}
         </div>
       </div>
     </div>

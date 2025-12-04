@@ -71,6 +71,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .group-header h3 {
@@ -133,16 +134,63 @@
   transform: scale(1.1);
 }
 
+.group-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.group-input-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.group-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.group-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.group-export {
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  color: #667eea;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.group-export:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
 .cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 999px));
-  grid-auto-rows: min-content; /* 각 아이템이 필요한 만큼만 높이 차지 */
-  gap: 16px;
-  align-items: start;
-  justify-items: start;
-  grid-auto-flow: row dense; /* dense를 사용하여 빈 공간을 채움 (테트리스 효과) */
   box-sizing: border-box;
   position: relative;
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 10px;
   /* 그리드 라인 배경 - 빨간색, 10mm x 10mm */
   background-image: 
     linear-gradient(to right, rgba(255, 0, 0, 0.3) 1px, transparent 1px),
@@ -150,9 +198,11 @@
   background-size: 10px 10px; /* 10mm = 10px (1px = 1mm) */
   background-position: 0 0;
   border: 1px solid rgba(255, 0, 0, 0.4);
+  overflow: visible;
 }
 
-.cards-grid > * {
-  width: max-content;
+.drop-zone-active {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+  border: 2px dashed rgba(0, 123, 255, 0.5) !important;
 }
 
