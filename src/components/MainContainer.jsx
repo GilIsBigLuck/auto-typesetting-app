@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useDraggable } from '@dnd-kit/core';
 import { FRAME_SIZES, PRINT_SIZES } from '../data/printSizes';
-import { mmToPxRounded } from '../utils/unitConverter';
+import { mmToPxRounded, pxToMm } from '../utils/unitConverter';
 import '../styles/MainContainer.css';
 import GroupContainer from './GroupContainer';
 import CardContainer from './CardContainer';
@@ -45,7 +45,7 @@ function CardsGridDropZone({ groupId, children }) {
   return <div ref={setNodeRef}>{children}</div>;
 }
 
-function MainContainer({ onAddGroup, onAddCard }) {
+function MainContainer({ onAddGroup, onAddCard, onAddText, onAddDivider }) {
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState({});
   const [groupData, setGroupData] = useState({}); // 판형의 타입 정보 저장
@@ -53,6 +53,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
 
   const [activeId, setActiveId] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [selectedCardIds, setSelectedCardIds] = useState(new Set());
   const [nextGroupId, setNextGroupId] = useState(1);
   const [nextCardId, setNextCardId] = useState(1);
   const gridSizeMm = 10; // 그리드 크기 (mm) - 10mm 단위로 이동
@@ -64,6 +65,8 @@ function MainContainer({ onAddGroup, onAddCard }) {
   // 함수 참조를 위한 ref
   const handleAddGroupRef = useRef(null);
   const handleAddCardRef = useRef(null);
+  const handleAddTextRef = useRef(null);
+  const handleAddDividerRef = useRef(null);
   
   // ID 추적을 위한 ref
   const nextGroupIdRef = useRef(1);
@@ -86,6 +89,35 @@ function MainContainer({ onAddGroup, onAddCard }) {
   useEffect(() => {
     selectedGroupIdRef.current = selectedGroupId;
   }, [selectedGroupId]);
+
+  // Ctrl+A로 현재 판형 내부의 모든 컨텐츠 선택/해제
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+A 또는 Cmd+A (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        
+        // 현재 선택된 판형이 있으면
+        if (selectedGroupId && items[selectedGroupId]) {
+          const allCardIds = items[selectedGroupId];
+          const allSelected = allCardIds.length > 0 && 
+            allCardIds.every(cardId => selectedCardIds.has(cardId));
+          
+          // 이미 모두 선택되어 있으면 전체 해제, 아니면 전체 선택
+          if (allSelected) {
+            setSelectedCardIds(new Set());
+          } else {
+            setSelectedCardIds(new Set(allCardIds));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedGroupId, items, selectedCardIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -337,27 +369,84 @@ function MainContainer({ onAddGroup, onAddCard }) {
     }
   }, [selectedGroupId]);
 
+  const handleCardClick = useCallback((cardId, e) => {
+    // 이벤트 전파 중지 (백그라운드 클릭 핸들러가 실행되지 않도록)
+    e.stopPropagation();
+    
+    // Ctrl 키가 눌려있으면 다중선택
+    if (e.ctrlKey) {
+      setSelectedCardIds((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(cardId)) {
+          newSet.delete(cardId);
+        } else {
+          newSet.add(cardId);
+        }
+        return newSet;
+      });
+    } else {
+      // Ctrl 키가 없으면 단일선택 (기존 선택 해제)
+      setSelectedCardIds((prev) => {
+        if (prev.has(cardId) && prev.size === 1) {
+          return new Set(); // 같은 카드를 다시 클릭하면 선택 해제
+        }
+        return new Set([cardId]);
+      });
+    }
+  }, []);
+
+  const handleBackgroundClick = useCallback(() => {
+    // 백그라운드 클릭 시 다중선택 초기화
+    setSelectedCardIds(new Set());
+  }, []);
+
   const handleDropImage = useCallback((cardId, file) => {
     if (!file) return;
+    
+    // 선택된 카드가 있으면 모두에 적용, 없으면 현재 카드에만 적용
+    const targetCardIds = selectedCardIds.size > 0 ? Array.from(selectedCardIds) : [cardId];
     
     // FileReader를 사용하여 이미지를 base64로 변환
     const reader = new FileReader();
     reader.onload = (e) => {
       const imageUrl = e.target.result;
       
-      // 기존 카드 데이터에 이미지 추가 (높이는 유지)
-      setCardData((prev) => ({
-        ...prev,
-        [cardId]: {
-          ...prev[cardId],
-          imageUrl,
-        },
-      }));
+      // 선택된 모든 카드에 이미지 추가
+      setCardData((prev) => {
+        const newCardData = { ...prev };
+        targetCardIds.forEach((id) => {
+          newCardData[id] = {
+            ...newCardData[id],
+            imageUrl,
+          };
+        });
+        return newCardData;
+      });
     };
     reader.onerror = () => {
       console.error('이미지 파일을 읽는 중 오류가 발생했습니다.');
     };
     reader.readAsDataURL(file);
+  }, [selectedCardIds]);
+
+  const handleRotateCard = useCallback((cardId) => {
+    // 회전 버튼을 누르면 해당 카드만 선택하고 회전
+    setSelectedCardIds(new Set([cardId]));
+    
+    // 해당 카드만 회전
+    setCardData((prev) => {
+      const newCardData = { ...prev };
+      const card = newCardData[cardId];
+      if (card && card.widthPx && card.heightPx) {
+        // widthPx와 heightPx를 swap
+        newCardData[cardId] = {
+          ...card,
+          widthPx: card.heightPx,
+          heightPx: card.widthPx,
+        };
+      }
+      return newCardData;
+    });
   }, []);
 
   const handleDeleteCard = useCallback((cardId) => {
@@ -380,6 +469,16 @@ function MainContainer({ onAddGroup, onAddCard }) {
       ...prev,
       [groupId]: {
         ...prev[groupId],
+        ...updates,
+      },
+    }));
+  }, []);
+
+  const handleUpdateCardData = useCallback((cardId, updates) => {
+    setCardData((prev) => ({
+      ...prev,
+      [cardId]: {
+        ...prev[cardId],
         ...updates,
       },
     }));
@@ -420,6 +519,16 @@ function MainContainer({ onAddGroup, onAddCard }) {
           })
           .join('\n');
 
+        // HTML 요소의 모든 px 값을 mm로 변환하기 위한 함수
+        const convertPxToMm = (html) => {
+          // px 값을 mm로 변환 (1px = 1mm)
+          return html.replace(/(\d+(?:\.\d+)?)px/g, (match, value) => {
+            return `${value}mm`;
+          });
+        };
+
+        const convertedHtml = convertPxToMm(gridElement.outerHTML);
+
         printWindow.document.write(`
           <!DOCTYPE html>
           <html>
@@ -430,6 +539,9 @@ function MainContainer({ onAddGroup, onAddCard }) {
                   size: ${widthMm}mm ${heightMm}mm;
                   margin: 0;
                 }
+                * {
+                  box-sizing: border-box;
+                }
                 body {
                   margin: 0;
                   padding: 0;
@@ -439,15 +551,31 @@ function MainContainer({ onAddGroup, onAddCard }) {
                   background: white;
                 }
                 .cards-grid {
-                  width: 100% !important;
-                  height: 100% !important;
+                  width: ${widthMm}mm !important;
+                  height: auto !important;
+                  min-height: ${heightMm}mm !important;
                   margin: 0 !important;
                   padding: 0 !important;
+                  background-image: none !important;
+                  border: none !important;
+                }
+                .card-header,
+                .card-header-buttons,
+                .card-divider-controls {
+                  display: none !important;
+                }
+                .card-container {
+                  border: none !important;
+                }
+                .card-container.selected {
+                  border: none !important;
+                  box-shadow: none !important;
+                  outline: none !important;
                 }
               </style>
             </head>
             <body>
-              ${gridElement.outerHTML}
+              ${convertedHtml}
             </body>
           </html>
         `);
@@ -489,24 +617,72 @@ function MainContainer({ onAddGroup, onAddCard }) {
         return;
       }
 
+      // 브라우저 인쇄용 스타일 가져오기
+      const styles = Array.from(document.styleSheets)
+        .map(sheet => {
+          try {
+            return Array.from(sheet.cssRules)
+              .map(rule => rule.cssText)
+              .join('\n');
+          } catch (e) {
+            return '';
+          }
+        })
+        .join('\n');
+
+      // HTML 요소의 모든 px 값을 mm로 변환하기 위한 함수
+      const convertPxToMm = (html) => {
+        // px 값을 mm로 변환 (1px = 1mm)
+        return html.replace(/(\d+(?:\.\d+)?)px/g, (match, value) => {
+          return `${value}mm`;
+        });
+      };
+
+      const convertedHtml = convertPxToMm(gridElement.outerHTML);
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <style>
+              ${styles}
               @page {
                 size: ${widthMm}mm ${heightMm}mm;
                 margin: 0;
+              }
+              * {
+                box-sizing: border-box;
               }
               body {
                 margin: 0;
                 padding: 0;
                 width: ${widthMm}mm;
                 height: ${heightMm}mm;
+                background: white;
+              }
+              .cards-grid {
+                width: ${widthMm}mm !important;
+                height: auto !important;
+                min-height: ${heightMm}mm !important;
+                background-image: none !important;
+                border: none !important;
+              }
+              .card-header,
+              .card-header-buttons,
+              .card-divider-controls {
+                display: none !important;
+              }
+              .card-container {
+                border: none !important;
+              }
+              .card-container.selected {
+                border: none !important;
+                box-shadow: none !important;
+                outline: none !important;
               }
             </style>
           </head>
-          <body>${gridElement.innerHTML}</body>
+          <body>${convertedHtml}</body>
         </html>
       `);
       printWindow.document.close();
@@ -517,6 +693,74 @@ function MainContainer({ onAddGroup, onAddCard }) {
     }
   }, [groupData]);
 
+  const handleAddText = useCallback(() => {
+    const currentGroups = groups;
+    if (currentGroups.length === 0) {
+      return;
+    }
+    
+    const currentSelectedGroupId = selectedGroupIdRef.current;
+    const targetGroup = currentSelectedGroupId && currentGroups.includes(currentSelectedGroupId) 
+      ? currentSelectedGroupId 
+      : currentGroups[0];
+    const currentCardId = nextCardIdRef.current;
+    const newCardId = `card-${currentCardId}`;
+    
+    setItems((prev) => ({
+      ...prev,
+      [targetGroup]: [...(prev[targetGroup] || []), newCardId],
+    }));
+    setCardData((prev) => ({
+      ...prev,
+      [newCardId]: {
+        type: 'text',
+        widthPx: 200,
+        heightPx: 50,
+        text: '텍스트',
+      },
+    }));
+    setNextCardId((prev) => {
+      nextCardIdRef.current = prev + 1;
+      return prev + 1;
+    });
+  }, [groups]);
+
+  const handleAddDivider = useCallback(() => {
+    const currentGroups = groups;
+    if (currentGroups.length === 0) {
+      return;
+    }
+    
+    const currentSelectedGroupId = selectedGroupIdRef.current;
+    const targetGroup = currentSelectedGroupId && currentGroups.includes(currentSelectedGroupId) 
+      ? currentSelectedGroupId 
+      : currentGroups[0];
+    const currentCardId = nextCardIdRef.current;
+    const newCardId = `card-${currentCardId}`;
+    
+    // 구분선은 cards-grid의 100%를 채우므로 width를 100%로 설정
+    const groupWidth = groupData[targetGroup]?.widthPx || 800;
+    
+    setItems((prev) => ({
+      ...prev,
+      [targetGroup]: [...(prev[targetGroup] || []), newCardId],
+    }));
+    setCardData((prev) => ({
+      ...prev,
+      [newCardId]: {
+        type: 'divider',
+        widthPx: groupWidth,
+        heightPx: 2,
+        marginLeft: 0,
+        marginRight: 0,
+      },
+    }));
+    setNextCardId((prev) => {
+      nextCardIdRef.current = prev + 1;
+      return prev + 1;
+    });
+  }, [groups, groupData]);
+
   // ref에 함수 저장
   useEffect(() => {
     handleAddGroupRef.current = handleAddGroup;
@@ -525,6 +769,14 @@ function MainContainer({ onAddGroup, onAddCard }) {
   useEffect(() => {
     handleAddCardRef.current = handleAddCard;
   }, [handleAddCard]);
+
+  useEffect(() => {
+    handleAddTextRef.current = handleAddText;
+  }, [handleAddText]);
+
+  useEffect(() => {
+    handleAddDividerRef.current = handleAddDivider;
+  }, [handleAddDivider]);
   
   // Navigation에 전달할 핸들러들을 부모 컴포넌트에 노출
   useEffect(() => {
@@ -547,6 +799,26 @@ function MainContainer({ onAddGroup, onAddCard }) {
     }
   }, [onAddCard]);
 
+  useEffect(() => {
+    if (onAddText && typeof onAddText === 'object' && 'current' in onAddText) {
+      onAddText.current = () => {
+        if (handleAddTextRef.current) {
+          handleAddTextRef.current();
+        }
+      };
+    }
+  }, [onAddText]);
+
+  useEffect(() => {
+    if (onAddDivider && typeof onAddDivider === 'object' && 'current' in onAddDivider) {
+      onAddDivider.current = () => {
+        if (handleAddDividerRef.current) {
+          handleAddDividerRef.current();
+        }
+      };
+    }
+  }, [onAddDivider]);
+
   return (
     <main className="main-container">
       <div 
@@ -554,6 +826,7 @@ function MainContainer({ onAddGroup, onAddCard }) {
         style={{
           backgroundSize: `${gridSize}px ${gridSize}px`,
         }}
+        onClick={handleBackgroundClick}
       >
         <DndContext
           sensors={sensors}
@@ -602,7 +875,11 @@ function MainContainer({ onAddGroup, onAddCard }) {
                               id={cardId}
                               cardData={cardData[cardId]}
                               padding={groupData[groupId]?.padding ?? 4}
+                              isSelected={selectedCardIds.has(cardId)}
                               onDelete={handleDeleteCard}
+                              onClick={handleCardClick}
+                              onRotate={handleRotateCard}
+                              onUpdateCardData={handleUpdateCardData}
                               onDropImage={handleDropImage}
                             />
                           ))}

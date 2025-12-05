@@ -24,6 +24,7 @@ function GroupContainer({ id, children, groupData, isSelected, onSelect, onDelet
       type: 'group',
     },
   });
+
   
   // 두 ref를 결합
   const setNodeRef = (node) => {
@@ -39,8 +40,8 @@ function GroupContainer({ id, children, groupData, isSelected, onSelect, onDelet
 
   const handleSelect = (e) => {
     e.stopPropagation();
-    // 드래그 핸들을 클릭한 경우는 선택하지 않음
-    if (e.target.closest('.group-drag-handle')) {
+    // 헤더나 컨트롤 영역을 클릭한 경우는 선택하지 않음
+    if (e.target.closest('.group-header') || e.target.closest('.group-controls')) {
       return;
     }
     if (onSelect) {
@@ -95,17 +96,11 @@ function GroupContainer({ id, children, groupData, isSelected, onSelect, onDelet
       ref={setNodeRef}
       style={style}
       onClick={handleSelect}
+      {...attributes}
+      {...listeners}
     >
       <div className="group-inner">
-        <div className="group-header">
-          <button 
-            className="group-drag-handle" 
-            title="판형 드래그"
-            {...attributes}
-            {...listeners}
-          >
-            ⋮⋮
-          </button>
+        <div className="group-header" onClick={(e) => e.stopPropagation()}>
           <h3>
             {displayName}
             {displaySize && <span className="group-size"> ({displaySize})</span>}
